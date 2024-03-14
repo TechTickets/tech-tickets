@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+source .env
+if [ -f etc/.env ]; then
+  source etc/.env
+fi
+
+case $1 in
+  collector)
+    ./scripts/run_collector.sh
+    ;;
+  db)
+    ./scripts/start_local_db.sh
+    ;;
+  reset_db)
+    ./scripts/reset_db.sh
+    ;;
+  discord)
+    echo "Not yet complete"
+    ;;
+  *)
+    echo -e "Please provide a valid project to execute.\nValid Projects: ("
+    echo -e "  collector"
+    echo -e "  db"
+    echo -e "  reset_db"
+    echo -e "  discord"
+    echo -e ")"
+    exit 1
+    ;;
+esac

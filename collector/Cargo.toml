@@ -1,0 +1,38 @@
+[package]
+name = "collector"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Internal
+auth = { workspace = true, features = ["server"] }
+errors = { workspace = true, features = ["axum"] }
+dry = { workspace = true, features = ["config", "database"] }
+socketio-server = { workspace = true, optional = true }
+socketio-emitter.workspace = true
+events.workspace = true
+sdk = { workspace = true, features = ["server"] }
+
+# Functional Libraries
+axum = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+uuid = { workspace = true, features = ["v4", "serde"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-native-tls", "postgres", "macros", "uuid", "time"] }
+
+# Serde
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+# Logging
+tracing-subscriber.workspace = true
+log.workspace = true
+
+# Redis
+redis.workspace = true
+
+[features]
+default = ["nest-websocket-server"]
+
+nest-websocket-server = ["socketio-server"]

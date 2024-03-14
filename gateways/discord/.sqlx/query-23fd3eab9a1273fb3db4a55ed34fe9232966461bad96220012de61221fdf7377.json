@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT purpose, id FROM discord_app_channels WHERE guild_id = Any($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "purpose",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "23fd3eab9a1273fb3db4a55ed34fe9232966461bad96220012de61221fdf7377"
+}

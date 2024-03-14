@@ -1,0 +1,25 @@
+[package]
+name = "errors"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0.58"
+
+# Default handlers
+jsonwebtoken.workspace = true
+serde_json.workspace = true
+
+# Error handlers
+sqlx = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+url = { version = "2.5.0", optional = true }
+redis = { workspace = true, optional = true }
+rust_socketio = { workspace = true, optional = true }
+socketioxide = { workspace = true, optional = true }
+
+# Serde
+serde.workspace = true

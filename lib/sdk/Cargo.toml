@@ -1,0 +1,30 @@
+[package]
+name = "sdk"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+# Internal Deps
+auth.workspace = true
+errors.workspace = true
+
+# Serde
+serde.workspace = true
+
+# UUID
+uuid.workspace = true
+
+# Tokio
+tokio = { workspace = true, optional = true }
+
+# Http Clients
+axum = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+
+# Chrono
+chrono = { workspace = true, optional = true }
+
+[features]
+client = ["reqwest", "tokio", "chrono", "errors/reqwest", "errors/url"]
+server = ["axum"]

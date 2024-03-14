@@ -1,0 +1,12 @@
+{
+  "adapter": {
+    "type": "redis",
+    "redis": {
+      "url": "redis://127.0.0.1:6379"
+    }
+  },
+  "jwt": {
+    "public_key_location": "public.key",
+    "private_key_location": "private.key"
+  }
+}

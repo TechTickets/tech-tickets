@@ -1,0 +1,21 @@
+[package]
+name = "discord-tickets"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+jsonwebtoken.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serenity = "0.12.0"
+tokio.workspace = true
+uuid.workspace = true
+sqlx.workspace = true
+tracing-subscriber.workspace = true
+log.workspace = true
+bimap = "0.6.3"
+moka = { version = "0.12.5", features = ["future"] }

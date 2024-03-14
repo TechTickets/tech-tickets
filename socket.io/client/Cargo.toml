@@ -1,0 +1,17 @@
+[package]
+name = "socketio-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Workspace Dependencies
+errors = { workspace = true, features = ["rust_socketio"] }
+events.workspace = true
+
+# Client Libraries
+tokio.workspace = true
+rust_socketio = { workspace = true, features = ["async"] }
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+uuid.workspace = true

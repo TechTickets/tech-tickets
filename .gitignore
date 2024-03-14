@@ -1,0 +1,6 @@
+.idea/
+target/
+etc/
+
+public.key
+private.key

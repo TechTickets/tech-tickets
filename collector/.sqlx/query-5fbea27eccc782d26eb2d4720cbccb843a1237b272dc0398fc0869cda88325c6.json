@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO gateway (app_id, name, enabled) VALUES ($1, $2, $3) ON CONFLICT (app_id, name) DO UPDATE SET enabled = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5fbea27eccc782d26eb2d4720cbccb843a1237b272dc0398fc0869cda88325c6"
+}

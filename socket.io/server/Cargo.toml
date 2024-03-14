@@ -1,0 +1,37 @@
+[package]
+name = "socketio-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Workspace Dependencies
+errors = { workspace = true, features = ["socketioxide"] }
+events.workspace = true
+auth.workspace = true
+dry.workspace = true
+
+# UUID
+uuid.workspace = true
+
+# Server/Async Libraries
+axum = { workspace = true, features = ["macros"] }
+socketioxide = { workspace = true, features = ["state", "extensions"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+# Logger
+tracing-subscriber = "0.3.18"
+log = "0.4.21"
+
+# Serde
+serde.workspace = true
+serde_json.workspace = true
+
+# Adapter Types
+redis = { workspace = true, optional = true }
+
+[features]
+default = ["redis_adapter"]
+
+redis_adapter = ["redis", "events/redis", "errors/redis"]

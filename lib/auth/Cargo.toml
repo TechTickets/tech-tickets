@@ -1,0 +1,18 @@
+[package]
+name = "auth"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono.workspace = true
+errors.workspace = true
+serde.workspace = true
+uuid.workspace = true
+jsonwebtoken.workspace = true
+
+axum = { workspace = true, optional = true }
+
+[features]
+server = ["axum", "errors/axum"]

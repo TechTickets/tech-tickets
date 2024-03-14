@@ -1,0 +1,20 @@
+[package]
+name = "dry"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+errors.workspace = true
+
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+sqlx = { workspace = true, optional = true, features = ["postgres"] }
+
+[features]
+default = ["config"]
+
+database = ["sqlx", "errors/sqlx"]
+config = ["serde", "serde_json"]

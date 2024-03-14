@@ -1,0 +1,64 @@
+[workspace]
+resolver = "2"
+members = [
+    # Shared Libraries
+    "lib/errors",
+    "lib/auth",
+    "lib/sdk",
+    "lib/dry",
+    "lib/events",
+    # Socket.IO
+    "socket.io/client",
+    "socket.io/emitter",
+    "socket.io/server",
+    # Gateways
+    #    "gateways/discord",
+    # Collector
+    "collector",
+]
+
+[workspace.dependencies]
+# Lib
+errors = { path = "lib/errors" }
+auth = { path = "lib/auth" }
+sdk = { path = "lib/sdk" }
+events = { path = "lib/events" }
+dry = { path = "lib/dry" }
+# Socket IO
+socketio-server = { path = "socket.io/server" }
+socketio-client = { path = "socket.io/client" }
+socketio-emitter = { path = "socket.io/emitter" }
+
+# Logging
+tracing-subscriber = "0.3.18"
+log = "0.4.21"
+
+# Websocket Clients
+rust_socketio = "0.4.4"
+socketioxide = "0.11.0"
+
+# UUID
+uuid = { version = "1.7.0", features = ["serde"] }
+
+# Message Brokers
+redis = "0.25.1"
+
+# SQLX
+sqlx = "0.7.4"
+
+# JWT
+jsonwebtoken = "9.2.0"
+
+# Http Clients
+reqwest = { version = "0.11.24", features = ["json", "serde_json"] }
+axum = "0.7.4"
+
+# Serde
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.103"
+
+# Tokio
+tokio = "1.36.0"
+
+# Chrono
+chrono = "0.4.35"
