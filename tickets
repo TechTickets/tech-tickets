@@ -15,6 +15,9 @@ case $1 in
   reset_db)
     ./scripts/reset_db.sh
     ;;
+  gen_keys)
+    ./scripts/gen_keys.sh
+    ;;
   discord)
     echo "Not yet complete"
     ;;
@@ -24,6 +27,7 @@ case $1 in
     echo -e "  db"
     echo -e "  reset_db"
     echo -e "  discord"
+    echo -e "  gen_keys"
     echo -e ")"
     exit 1
     ;;
