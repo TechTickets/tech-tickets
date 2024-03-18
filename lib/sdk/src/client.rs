@@ -2,14 +2,207 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use errors::{NetworkError, ParsingError, TicketsError, TicketsResult};
-use reqwest::{Client, ClientBuilder, Request, RequestBuilder, StatusCode, Url};
-use reqwest::{Method, Response};
+use reqwest::{Client, ClientBuilder, Method, Request, RequestBuilder, Response, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::routes::SdkExecutor;
+use super::routes::Empty;
 use auth::jwt::{JwtAccessor, JwtConfig, JwtData};
 use reqwest::header::{HeaderMap, HeaderValue};
+
+struct MethodWrapper(http::Method);
+
+impl From<MethodWrapper> for Method {
+    fn from(val: MethodWrapper) -> Self {
+        match val.0 {
+            http::Method::GET => Method::GET,
+            http::Method::POST => Method::POST,
+            http::Method::PUT => Method::PUT,
+            http::Method::DELETE => Method::DELETE,
+            http::Method::PATCH => Method::PATCH,
+            http::Method::HEAD => Method::HEAD,
+            http::Method::OPTIONS => Method::OPTIONS,
+            http::Method::CONNECT => Method::CONNECT,
+            http::Method::TRACE => Method::TRACE,
+            _ => panic!("Could not understand http method."),
+        }
+    }
+}
+
+pub trait SdkExecutor {
+    async fn call<T: for<'de> Deserialize<'de>, S: Into<String>, Q: Serialize>(
+        &self,
+        method: Method,
+        path: S,
+        query_params: Q,
+    ) -> TicketsResult<T>;
+
+    async fn call_with_body<
+        T: for<'de> Deserialize<'de>,
+        B: Serialize,
+        S: Into<String>,
+        Q: Serialize,
+    >(
+        &self,
+        method: Method,
+        path: S,
+        body: B,
+        query_params: Q,
+    ) -> TicketsResult<T>;
+
+    async fn invoke<S: Into<String>, Q: Serialize>(
+        &self,
+        method: Method,
+        path: S,
+        query_params: Q,
+    ) -> TicketsResult<StatusCode>;
+
+    async fn invoke_with_body<B: Serialize, S: Into<String>, Q: Serialize>(
+        &self,
+        method: Method,
+        path: S,
+        body: B,
+        query_params: Q,
+    ) -> TicketsResult<StatusCode>;
+}
+
+macro_rules! sdk_permutation {
+    ($($name:ident$(<$($generics:ident),*>)? {
+        $backing_fn:ident($($extra_function_tokens:tt)*) -> $return_type:ty {
+            $inner_call:ident($($binder_function_extras:tt)*)
+        }
+
+        Restrict { $($restrictions:tt)* } $(where $($where_clauses:tt)*)?
+    })*) => {
+        $(
+        pub trait $name$(<$($generics),*>)? {
+            async fn $backing_fn(executor: &impl crate::client::SdkExecutor, $($extra_function_tokens)*) -> TicketsResult<$return_type>;
+        }
+
+        impl<T$(, $($generics),*)?> $name$(<$($generics),*>)? for T
+        where
+            T: crate::routes::SdkRoute<$($restrictions)*>,
+            $($($where_clauses)*)?
+        {
+            async fn $backing_fn(executor: &impl crate::client::SdkExecutor, $($extra_function_tokens)*) -> TicketsResult<$return_type> {
+                executor.$inner_call(MethodWrapper(T::method()).into(), T::route(), $($binder_function_extras)*).await
+            }
+        }
+        )*
+    }
+}
+
+sdk_permutation! {
+    SdkCall<ResponseType> {
+        call() -> ResponseType {
+            call(())
+        }
+
+        Restrict {
+            Body = Empty,
+            Response = ResponseType,
+            QueryParams = Empty
+        } where
+            ResponseType: for<'de> Deserialize<'de>
+    }
+
+    SdkCallWithParams<ResponseType, QueryParams> {
+        call_with_query(query_params: QueryParams) -> ResponseType {
+            call(query_params)
+        }
+
+        Restrict {
+            Body = Empty,
+            Response = ResponseType,
+            QueryParams = QueryParams,
+        } where
+            ResponseType: for<'de> Deserialize<'de>,
+            QueryParams: Serialize
+    }
+
+    SdkCallWithBody<Body, ResponseType> {
+        call_with_body(body: Body) -> ResponseType {
+            call_with_body(body, ())
+        }
+
+        Restrict {
+            Body = Body,
+            Response = ResponseType,
+            QueryParams = Empty
+        } where
+            ResponseType: for<'de> Deserialize<'de>,
+            Body: Serialize
+
+    }
+
+    SdkCallWithBodyAndParams<ResponseType, Body, QueryParams> {
+        call_with_body_and_query(body: Body, query_params: QueryParams) -> ResponseType {
+            call_with_body(body, query_params)
+        }
+
+        Restrict {
+            Body = Body,
+            Response = ResponseType,
+            QueryParams = QueryParams
+        } where
+            ResponseType: for<'de> Deserialize<'de>,
+            Body: Serialize,
+            QueryParams: Serialize
+
+    }
+
+    SdkInvoke {
+        invoke() -> reqwest::StatusCode {
+            invoke(())
+        }
+
+        Restrict {
+            Body = Empty,
+            Response = Empty,
+            QueryParams = Empty
+        }
+    }
+
+    SdkInvokeWithParams<QueryParams> {
+        invoke_with_params(query_params: QueryParams) -> reqwest::StatusCode {
+            invoke(query_params)
+        }
+
+        Restrict {
+            Body = Empty,
+            Response = Empty,
+            QueryParams = QueryParams
+        } where
+            QueryParams: Serialize
+    }
+
+    SdkInvokeWithBody<Body> {
+        invoke_with_body(body: Body) -> reqwest::StatusCode {
+            invoke_with_body(body, ())
+        }
+
+        Restrict {
+            Body = Body,
+            Response = Empty,
+            QueryParams = Empty
+        } where
+            Body: Serialize
+    }
+
+    SdkInvokeWithBodyAndParams<Body, QueryParams> {
+        invoke_with_body_and_params(body: Body, query_params: QueryParams) -> reqwest::StatusCode {
+            invoke_with_body(body, query_params)
+        }
+
+        Restrict {
+            Body = Body,
+            Response = Empty,
+            QueryParams = QueryParams
+        } where
+            Body: Serialize,
+            QueryParams: Serialize
+    }
+}
 
 #[derive(Clone)]
 pub struct InternalSdk {
@@ -193,7 +386,7 @@ impl SignedTicketClient {
         }
     }
 
-    async fn dispose(response: Response) -> TicketsResult<StatusCode> {
+    async fn dispose(response: Response) -> TicketsResult<reqwest::StatusCode> {
         if response.status().is_success() {
             Ok(response.status())
         } else {

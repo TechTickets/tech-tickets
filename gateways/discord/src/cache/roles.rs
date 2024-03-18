@@ -1,9 +1,11 @@
-use std::fmt::Display;
 use std::sync::Arc;
 
+use auth::UserRole;
 use bimap::BiMap;
 use serenity::all::{Color, Context, GuildId, RoleId};
 use tokio::sync::RwLock;
+
+use errors::TicketsResult;
 
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
@@ -11,6 +13,24 @@ use tokio::sync::RwLock;
 pub enum RolePurpose {
     Staff,
     Management,
+}
+
+impl From<UserRole> for RolePurpose {
+    fn from(value: UserRole) -> Self {
+        match value {
+            UserRole::Staff => RolePurpose::Staff,
+            UserRole::Management => RolePurpose::Management,
+        }
+    }
+}
+
+impl From<RolePurpose> for UserRole {
+    fn from(value: RolePurpose) -> Self {
+        match value {
+            RolePurpose::Staff => UserRole::Staff,
+            RolePurpose::Management => UserRole::Management,
+        }
+    }
 }
 
 const STAFF_ROLE_NAME: &str = "Tech Tickets Staff";
@@ -32,27 +52,6 @@ impl RolePurpose {
     }
 }
 
-impl Display for RolePurpose {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RolePurpose::Staff => write!(f, "staff"),
-            RolePurpose::Management => write!(f, "management"),
-        }
-    }
-}
-
-impl TryFrom<String> for RolePurpose {
-    type Error = anyhow::Error;
-
-    fn try_from(role_name: String) -> anyhow::Result<Self> {
-        Ok(match role_name.as_str() {
-            "staff" => RolePurpose::Staff,
-            "management" => RolePurpose::Management,
-            _ => Err(anyhow::format_err!("Invalid role id: {}", role_name))?,
-        })
-    }
-}
-
 pub struct RolesCache {
     inner: Arc<RwLock<BiMap<(RolePurpose, GuildId), RoleId>>>,
 }
@@ -70,7 +69,7 @@ impl RolesCache {
         &self,
         ctx: &Context,
         guilds: impl Iterator<Item = GuildId>,
-    ) -> anyhow::Result<()> {
+    ) -> TicketsResult<()> {
         let mut inner = self.inner.write().await;
 
         let size_hint = guilds.size_hint().0 * std::mem::variant_count::<RolePurpose>();

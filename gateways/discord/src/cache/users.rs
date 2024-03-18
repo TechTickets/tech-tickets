@@ -1,14 +1,13 @@
 use std::time::Duration;
 
-use crate::state::DiscordAppState;
+use auth::jwt::JwtAccessor;
+use auth::UserRole;
+use errors::TicketsResult;
 use moka::policy::EvictionPolicy;
 use reqwest::{Method, StatusCode};
+use sdk::client::{InternalSdk, SdkExecutor, SignedTicketClient};
 use serde::{Deserialize, Serialize};
 use serenity::all::UserId;
-use tickets_common::errors::SdkResult;
-use tickets_common::jwt::JwtAccessor;
-use tickets_common::requests::sdk::{InternalSdk, SignedTicketClient};
-use tickets_common::requests::SdkExecutor;
 
 #[derive(Clone)]
 pub struct User {
@@ -21,7 +20,7 @@ impl SdkExecutor for User {
         method: Method,
         path: S,
         query_params: Q,
-    ) -> SdkResult<T> {
+    ) -> TicketsResult<T> {
         self.client.call(method, path, query_params).await
     }
 
@@ -36,7 +35,7 @@ impl SdkExecutor for User {
         path: S,
         body: B,
         query_params: Q,
-    ) -> SdkResult<T> {
+    ) -> TicketsResult<T> {
         self.client
             .call_with_body(method, path, body, query_params)
             .await
@@ -47,7 +46,7 @@ impl SdkExecutor for User {
         method: Method,
         path: S,
         query_params: Q,
-    ) -> SdkResult<StatusCode> {
+    ) -> TicketsResult<StatusCode> {
         self.client.invoke(method, path, query_params).await
     }
 
@@ -57,7 +56,7 @@ impl SdkExecutor for User {
         path: S,
         body: B,
         query_params: Q,
-    ) -> SdkResult<StatusCode> {
+    ) -> TicketsResult<StatusCode> {
         self.client
             .invoke_with_body(method, path, body, query_params)
             .await
@@ -65,13 +64,14 @@ impl SdkExecutor for User {
 }
 
 impl User {
-    pub fn staff(app_state: &DiscordAppState, user_id: UserId) -> Self {
+    pub fn staff(sdk: &InternalSdk, user_id: UserId, role: UserRole) -> Self {
         Self {
-            client: app_state
-                .internal_sdk
+            client: sdk
                 .sign_client(
                     JwtAccessor::DiscordStaffMember {
                         user_id: user_id.get(),
+                        authorized_apps: Default::default(),
+                        role,
                     },
                     InternalSdk::DEFAULT_TTL,
                 )

@@ -9,7 +9,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 
-use events::event_channels::{APP_CHANGED_EVENT, TICKET_SUBMITTED_EVENT};
+use events::event_channels::{APP_CHANGED_EVENT, TICKET_UPDATED_EVENT};
 use events::websocket::SocketAuthData;
 use events::websocket::{ListenTo, ListenToResult};
 use events::{PublishedMessage, TicketEvent, APP_CHANGES_NAMESPACE, TICKETS_NAMESPACE};
@@ -153,9 +153,9 @@ pub fn setup_server(
                         broadcast.emit(APP_CHANGED_EVENT, (msg.app_id, app_changed))?;
                     }
                 }
-                TicketEvent::TicketSubmitted(ticket_submitted) => {
+                TicketEvent::TicketUpdated(ticket_updated) => {
                     if let Some(broadcast) = broadcast(&io, TICKETS_NAMESPACE, msg.app_id) {
-                        broadcast.emit(TICKET_SUBMITTED_EVENT, (msg.app_id, ticket_submitted))?;
+                        broadcast.emit(TICKET_UPDATED_EVENT, (msg.app_id, ticket_updated))?;
                     }
                 }
             }

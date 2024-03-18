@@ -3,19 +3,19 @@ use std::collections::HashMap;
 
 use crate::impl_interactable;
 use crate::interactions::InteractionContext;
-use crate::state::DiscordAppState;
+use crate::shared_state::SharedAppState;
 
-pub struct ModalContext<'a> {
-    pub interaction: InteractionContext<'a>,
+pub struct ModalContext {
+    pub interaction: InteractionContext,
     text_inputs: HashMap<String, String>,
 }
 
-impl<'a> ModalContext<'a> {
-    pub fn new<'b>(
-        app_state: &'b DiscordAppState,
-        ctx: &'b Context,
+impl ModalContext {
+    pub fn new(
+        app_state: SharedAppState,
+        ctx: Context,
         interaction: ModalInteraction,
-    ) -> ModalContext<'b> {
+    ) -> ModalContext {
         let mut text_inputs = HashMap::new();
 
         for component in &interaction.data.components {
@@ -39,11 +39,9 @@ impl<'a> ModalContext<'a> {
         }
     }
 
-    pub fn pop_text_input(&mut self, input_name: &str) -> anyhow::Result<String> {
-        self.text_inputs
-            .remove(input_name)
-            .ok_or_else(|| anyhow::format_err!("Missing required input: {}", input_name))
+    pub fn pop_text_input(&mut self, input_name: &str) -> Option<String> {
+        self.text_inputs.remove(input_name)
     }
 }
 
-impl_interactable!(for ModalContext::<'a>.interaction);
+impl_interactable!(for ModalContext.interaction);

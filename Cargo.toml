@@ -12,7 +12,7 @@ members = [
     "socket.io/emitter",
     "socket.io/server",
     # Gateways
-    #    "gateways/discord",
+    "gateways/discord",
     # Collector
     "collector",
 ]
@@ -21,8 +21,8 @@ members = [
 # Lib
 errors = { path = "lib/errors" }
 auth = { path = "lib/auth" }
-sdk = { path = "lib/sdk" }
 events = { path = "lib/events" }
+sdk = { path = "lib/sdk" }
 dry = { path = "lib/dry" }
 # Socket IO
 socketio-server = { path = "socket.io/server" }
@@ -62,3 +62,6 @@ tokio = "1.36.0"
 
 # Chrono
 chrono = "0.4.35"
+
+# Serenity
+serenity = "0.12.0"

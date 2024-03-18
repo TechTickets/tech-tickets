@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-source .env
-if [ -f etc/.env ]; then
-  source etc/.env
-fi
-
 case $1 in
   collector)
     ./scripts/run_collector.sh
@@ -19,14 +14,14 @@ case $1 in
     ./scripts/gen_keys.sh
     ;;
   discord)
-    echo "Not yet complete"
+    ./scripts/run_discord_bot.sh
     ;;
   *)
     echo -e "Please provide a valid project to execute.\nValid Projects: ("
     echo -e "  collector"
+    echo -e "  discord"
     echo -e "  db"
     echo -e "  reset_db"
-    echo -e "  discord"
     echo -e "  gen_keys"
     echo -e ")"
     exit 1

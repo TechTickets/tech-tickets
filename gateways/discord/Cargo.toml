@@ -6,15 +6,22 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dry = { workspace = true, features = ["config", "database"] }
+errors = { workspace = true, features = ["sqlx", "serenity", "tokio"] }
+auth = { workspace = true }
+sdk = { workspace = true, features = ["client"] }
+socketio-client = { workspace = true }
+events = { workspace = true }
+
 chrono.workspace = true
 jsonwebtoken.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serenity = "0.12.0"
-tokio.workspace = true
+serenity.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 uuid.workspace = true
-sqlx.workspace = true
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "time", "uuid"] }
 tracing-subscriber.workspace = true
 log.workspace = true
 bimap = "0.6.3"

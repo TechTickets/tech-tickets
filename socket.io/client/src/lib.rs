@@ -1,13 +1,14 @@
 use std::time::Duration;
 
 use errors::TicketsResult;
-use rust_socketio::asynchronous::{Client, ClientBuilder};
+pub use rust_socketio::asynchronous::Client;
+use rust_socketio::asynchronous::ClientBuilder;
 use rust_socketio::Payload;
 use tokio::sync::mpsc::UnboundedReceiver;
 use uuid::Uuid;
 
 use events::websocket::ListenToResult;
-use events::{AppChangedEvent, TicketSubmittedEvent};
+use events::{AppChangedEvent, TicketUpdatedEvent};
 
 pub trait Namespace {
     type Message: for<'de> serde::Deserialize<'de> + Send + Sync + 'static;
@@ -20,14 +21,14 @@ pub trait Namespace {
 pub struct TicketNamespace;
 
 impl Namespace for TicketNamespace {
-    type Message = (Uuid, TicketSubmittedEvent);
+    type Message = (Uuid, TicketUpdatedEvent);
 
     fn namespace() -> &'static str {
         events::TICKETS_NAMESPACE
     }
 
     fn callback_event() -> &'static str {
-        events::event_channels::TICKET_SUBMITTED_EVENT
+        events::event_channels::TICKET_UPDATED_EVENT
     }
 }
 
@@ -51,7 +52,7 @@ pub struct TicketSocketConfig {
 }
 
 pub async fn connect<N: Namespace>(
-    config: TicketSocketConfig,
+    config: &TicketSocketConfig,
 ) -> TicketsResult<(Client, UnboundedReceiver<N::Message>)> {
     println!("Connecting to the server...");
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();

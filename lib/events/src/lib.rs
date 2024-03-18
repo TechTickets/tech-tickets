@@ -1,3 +1,4 @@
+#![feature(concat_idents)]
 pub mod adapter;
 
 use auth::UserRole;
@@ -7,50 +8,91 @@ pub const APP_CHANGES_NAMESPACE: &str = "/app_changes";
 pub const TICKETS_NAMESPACE: &str = "/tickets";
 pub const TICKETS_LIVE_EVENTS_CHANNEL: &str = "tickets_live_events";
 
+macro_rules! event_hierarchy {
+    (
+        $glob:ident {
+            $(
+                $parent:ident($parent_event:ident) {
+                    $(
+                        $child:ident($child_event:ident) {
+                            $(
+                                $field:ident: $type:ty,
+                            )*
+                        }
+                    ),*
+                }
+            ),*
+        }
+    ) => {
+        #[derive(serde::Serialize, serde::Deserialize, Debug)]
+        pub enum $glob {
+            $(
+                $parent($parent_event),
+            )*
+        }
+
+        $(
+            #[derive(serde::Serialize, serde::Deserialize, Debug)]
+            pub enum $parent_event {
+                $(
+                $child($child_event),
+                )*
+            }
+
+            impl From<$parent_event> for $glob {
+                fn from(event: $parent_event) -> Self {
+                    $glob::$parent(event)
+                }
+            }
+
+            $(
+                #[derive(serde::Serialize, serde::Deserialize, Debug)]
+                pub struct $child_event {
+                    pub $($field: $type),*
+                }
+
+                impl From<$child_event> for $parent_event {
+                    fn from(event: $child_event) -> Self {
+                        $parent_event::$child(event)
+                    }
+                }
+
+                impl From<$child_event> for $glob {
+                    fn from(event: $child_event) -> Self {
+                        $glob::$parent($parent_event::$child(event))
+                    }
+                }
+            )*
+        )*
+    };
+}
+
+event_hierarchy! {
+    TicketEvent {
+        AppChanged(AppChangedEvent) {
+            StaffPromoted(StaffPromotedEvent) {
+                user_id: u64,
+                role: UserRole,
+            }
+        },
+        TicketUpdated(TicketUpdatedEvent) {
+            TicketSubmitted(TicketSubmittedEvent) {
+                message: String,
+            }
+        }
+    }
+}
+
 pub mod event_channels {
     pub const APP_CHANGED_EVENT: &str = "app_changed";
 
-    pub const TICKET_SUBMITTED_EVENT: &str = "ticket_submitted";
+    pub const TICKET_UPDATED_EVENT: &str = "ticket_updated";
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct PublishedMessage {
     pub app_id: Uuid,
     pub event: TicketEvent,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub enum TicketEvent {
-    AppChanged(AppChangedEvent),
-    TicketSubmitted(TicketSubmittedEvent),
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub struct TicketSubmittedEvent {
-    pub message: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub enum AppChangedEvent {
-    StaffPromoted { staff_id: i64, role: UserRole },
-}
-
-impl From<TicketEvent> for TicketSubmittedEvent {
-    fn from(event: TicketEvent) -> Self {
-        match event {
-            TicketEvent::TicketSubmitted(submitted) => submitted,
-            _ => panic!("Tried to convert non-TicketSubmittedEvent to TicketSubmittedEvent"),
-        }
-    }
-}
-
-impl From<TicketEvent> for AppChangedEvent {
-    fn from(event: TicketEvent) -> Self {
-        match event {
-            TicketEvent::AppChanged(app_changed) => app_changed,
-            _ => panic!("Tried to convert non-AppChangedEvent to AppChangedEvent"),
-        }
-    }
 }
 
 pub mod websocket {

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # Internal
 auth = { workspace = true, features = ["server"] }
-errors = { workspace = true, features = ["axum"] }
+errors = { workspace = true, features = ["axum", "tokio"] }
 dry = { workspace = true, features = ["config", "database"] }
 socketio-server = { workspace = true, optional = true }
 socketio-emitter.workspace = true

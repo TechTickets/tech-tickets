@@ -4,6 +4,13 @@ pub type TicketsResult<T> = Result<T, TicketsError>;
 pub enum MiscError {
     #[error("Could not find guild data.")]
     GuildDataNotFound,
+    #[error("Missing http client.")]
+    MissingHttpClient,
+    #[error("A guild context is required for this action.")]
+    GuildContextRequired,
+    #[deprecated]
+    #[error("This feature is currently not implemented")]
+    Unimplemented,
 }
 
 impl MiscError {
@@ -11,6 +18,7 @@ impl MiscError {
     pub fn status_code(&self) -> axum::http::StatusCode {
         match self {
             MiscError::GuildDataNotFound => axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -19,11 +27,17 @@ impl MiscError {
 pub enum ParsingError {
     #[error("Failed to parse Guild Purpose, `{0}` is not valid.")]
     InvalidGuildPurpose(String),
+    #[error("Failed to parse Channel Purpose, `{0}` is not valid.")]
+    InvalidChannelPurpose(String),
     #[cfg(feature = "url")]
     #[error("Failed to parse URL: {0}")]
     Url(#[from] url::ParseError),
     #[error("Missing required header: {header}")]
     MissingRequiredHeader { header: String },
+    #[error("Failed to parse Role, `{0}` is not valid.")]
+    InvalidRole(String),
+    #[error("Failed to parse Command Type, `{0}` is not valid.")]
+    InvalidCommandType(String),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -92,10 +106,16 @@ pub enum TicketsError {
     #[cfg(feature = "rust_socketio")]
     #[error("WebSocket Client Error: {0}")]
     WebsocketClientError(#[from] rust_socketio::Error),
+    #[cfg(feature = "serenity")]
+    #[error("Serenity Error: {0}")]
+    Serenity(#[from] serenity::Error),
     #[error(transparent)]
     Misc(#[from] MiscError),
     #[error("Network Error: {}", .0.reason)]
     Network(NetworkError),
+    #[cfg(feature = "tokio")]
+    #[error("Error joining future: {0}")]
+    Join(#[from] tokio::task::JoinError),
 }
 
 #[cfg(feature = "axum")]
@@ -104,6 +124,7 @@ impl axum::response::IntoResponse for TicketsError {
         let status = match &self {
             TicketsError::Parsing(_) => axum::http::StatusCode::BAD_REQUEST,
             TicketsError::Authorization(err) => err.status_code(),
+            TicketsError::Misc(err) => err.status_code(),
             _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
 

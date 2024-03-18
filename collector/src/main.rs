@@ -76,11 +76,11 @@ async fn main() -> TicketsResult<()> {
 
             log::info!("Executing rest API and websocket server on :8000");
 
-            tokio::select! {
-                _ = adapter_handle => (),
-                _ = message_handle => (),
-                _ = axum::serve(listener, app).into_future() => (),
-            }
+            Ok(tokio::select! {
+                err = adapter_handle => err??,
+                err = message_handle => err??,
+                err = axum::serve(listener, app).into_future() => err?,
+            })
         }
 
         #[cfg(not(feature = "nest-websocket-server"))]
@@ -92,7 +92,6 @@ async fn main() -> TicketsResult<()> {
 
         log::info!("Executing rest API server on :8000");
 
-        axum::serve(listener, app).await?;
+        Ok(axum::serve(listener, app).await?)
     }
-    Ok(())
 }

@@ -1,5 +1,10 @@
 pub mod jwt;
 
+use errors::ParsingError;
+#[cfg(feature = "axum")]
+pub use server_handle::AuthedCaller;
+use std::fmt::Display;
+
 #[derive(
     serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash, Copy, Ord, PartialOrd,
 )]
@@ -8,8 +13,26 @@ pub enum UserRole {
     Management,
 }
 
-#[cfg(feature = "axum")]
-pub use server_handle::AuthedCaller;
+impl Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::Staff => write!(f, "staff"),
+            UserRole::Management => write!(f, "management"),
+        }
+    }
+}
+
+impl TryFrom<String> for UserRole {
+    type Error = ParsingError;
+
+    fn try_from(role_name: String) -> Result<Self, Self::Error> {
+        Ok(match role_name.as_str() {
+            "staff" => UserRole::Staff,
+            "management" => UserRole::Management,
+            _ => return Err(ParsingError::InvalidRole(role_name)),
+        })
+    }
+}
 
 #[cfg(feature = "axum")]
 mod server_handle {

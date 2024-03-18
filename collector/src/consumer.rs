@@ -13,7 +13,7 @@ pub mod submit_ticket {
     use axum::http::HeaderMap;
     use axum::Json;
     use errors::{AuthorizationError, TicketsResult};
-    use events::{TicketEvent, TicketSubmittedEvent};
+    use events::TicketSubmittedEvent;
     use sdk::routes::consumer::{SubmitTicketBody, SubmitTicketResponse};
     use uuid::Uuid;
 
@@ -59,9 +59,10 @@ pub mod submit_ticket {
 
         state.emitter.publish_tickets_event(
             app_id,
-            TicketEvent::TicketSubmitted(TicketSubmittedEvent {
+            TicketSubmittedEvent {
                 message: body.message,
-            }),
+            }
+            .into(),
         )?;
 
         Ok(Json(SubmitTicketResponse { ticket_id }))

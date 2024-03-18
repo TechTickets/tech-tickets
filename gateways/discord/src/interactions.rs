@@ -1,23 +1,54 @@
+use crate::shared_state::SharedAppState;
+use errors::{MiscError, TicketsResult};
 use serenity::all::{
-    ChannelId, CommandInteraction, Context, CreateAttachment, CreateInteractionResponse, GuildId,
-    InteractionId, ModalInteraction, User, UserId,
+    ChannelId, CommandInteraction, Context, GuildId, InteractionId, ModalInteraction, User,
 };
+use std::sync::Arc;
 
-use crate::state::DiscordAppState;
+#[macro_export]
+macro_rules! __response_part {
+    ($builder:ident => $addition:ident($($value:expr),*)) => {
+        $builder = $builder.$addition($($value),*);
+    };
+}
 
 #[macro_export]
 macro_rules! response {
     (
         message {
-            $(ephemeral: $ephemeral:literal,)?
-            message: $message:expr
+            $($addition:ident($($value:expr),*))*
         }
     ) => {
-        serenity::builder::CreateInteractionResponse::Message(
-            serenity::builder::CreateInteractionResponseMessage::new()
-                $(.ephemeral($ephemeral))?
-                .content($message),
-        )
+        {
+            let mut builder = serenity::builder::CreateInteractionResponseMessage::new();
+
+            $($crate::__response_part!(builder => $addition($($value),*));)*
+
+            serenity::builder::CreateInteractionResponse::Message(builder)
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! respond {
+    (
+        $http:expr,
+        $interaction_id:expr,
+        $token:expr,
+        message {
+            $($addition:ident($($value:expr),*))*
+        }
+    ) => {
+        $http.create_interaction_response(
+            $interaction_id,
+            $token,
+            &$crate::response! {
+                message {
+                    $($addition($($value),*))*
+                }
+            },
+            vec![],
+        ).await
     };
 }
 
@@ -70,7 +101,7 @@ macro_rules! impl_into_parts_rev {
                 InteractionContextParts {
                     interaction_id: *id,
                     guild_id: guild_id.as_ref().copied(),
-                    member: member.as_ref().cloned().map(|$member_ident| $member_mapper),
+                    member: member.clone().map(|$member_ident| $member_mapper),
                     user: user.clone(),
                     channel_id: *channel_id,
                     token: token.to_string(),
@@ -85,15 +116,16 @@ impl_into_parts_rev!(for ModalInteraction {
         Box::new(member)
     }
 });
+
 impl_into_parts_rev!(for CommandInteraction {
     memberMap: |member| {
         member
     }
 });
 
-pub struct InteractionContext<'a> {
-    pub app_state: &'a DiscordAppState,
-    pub ctx: &'a Context,
+pub struct InteractionContext {
+    pub state: SharedAppState,
+    pub context: Context,
     pub interaction_id: InteractionId,
     member: Option<Box<serenity::model::guild::Member>>,
     guild_id: Option<GuildId>,
@@ -103,13 +135,15 @@ pub struct InteractionContext<'a> {
 }
 
 pub trait Interactable {
-    fn http(&self) -> &serenity::http::Http;
+    fn http(&self) -> Arc<serenity::http::Http>;
 
-    fn state(&self) -> &DiscordAppState;
+    fn state(&self) -> SharedAppState;
 
     fn interaction_id(&self) -> InteractionId;
 
     fn guild_id(&self) -> Option<GuildId>;
+
+    fn member(&self) -> Option<&serenity::model::guild::Member>;
 
     fn user(&self) -> &User;
 
@@ -117,28 +151,20 @@ pub trait Interactable {
 
     fn token(&self) -> &str;
 
-    async fn get_staff_handle(&self, user: UserId) -> crate::cache::users::User;
+    fn require_guild_id(&self) -> TicketsResult<GuildId>;
 
-    async fn respond(
-        &self,
-        response: CreateInteractionResponse,
-        attachments: Vec<CreateAttachment>,
-    ) -> anyhow::Result<()>;
-
-    fn require_guild_id(&self) -> anyhow::Result<GuildId>;
-
-    fn require_member(&self) -> anyhow::Result<&serenity::model::guild::Member>;
+    fn require_member(&self) -> TicketsResult<&serenity::model::guild::Member>;
 }
 
 #[macro_export]
 macro_rules! impl_interactable {
     (for $type:ident$(::<$($generics:tt),*>)?.$field:ident) => {
         impl$(<$($generics)*>)? $crate::interactions::Interactable for $type$(<$($generics)*>)? {
-            fn http(&self) -> &serenity::http::Http {
+            fn http(&self) -> std::sync::Arc<serenity::http::Http> {
                 self.$field.http()
             }
 
-            fn state(&self) -> &DiscordAppState {
+            fn state(&self) -> crate::shared_state::SharedAppState {
                 self.$field.state()
             }
 
@@ -148,6 +174,10 @@ macro_rules! impl_interactable {
 
             fn guild_id(&self) -> Option<serenity::model::id::GuildId> {
                 self.$field.guild_id()
+            }
+
+            fn member(&self) -> Option<&serenity::model::guild::Member> {
+                self.$field.member()
             }
 
             fn user(&self) -> &serenity::model::user::User {
@@ -162,35 +192,23 @@ macro_rules! impl_interactable {
                 self.$field.token()
             }
 
-            async fn get_staff_handle(&self, user: serenity::model::id::UserId) -> $crate::cache::users::User {
-                self.$field.get_staff_handle(user).await
-            }
-
-            async fn respond(
-                &self,
-                response: serenity::builder::CreateInteractionResponse,
-                attachments: Vec<serenity::builder::CreateAttachment>,
-            ) -> anyhow::Result<()> {
-                self.$field.respond(response, attachments).await
-            }
-
-            fn require_guild_id(&self) -> anyhow::Result<serenity::model::id::GuildId> {
+            fn require_guild_id(&self) -> errors::TicketsResult<serenity::model::id::GuildId> {
                 self.$field.require_guild_id()
             }
 
-            fn require_member(&self) -> anyhow::Result<&serenity::model::guild::Member> {
+            fn require_member(&self) -> errors::TicketsResult<&serenity::model::guild::Member> {
                 self.$field.require_member()
             }
         }
     };
 }
 
-impl<'a> InteractionContext<'a> {
-    pub fn new<'b>(
-        app_state: &'b DiscordAppState,
-        ctx: &'b Context,
+impl InteractionContext {
+    pub fn new(
+        state: SharedAppState,
+        context: Context,
         parts: impl Into<InteractionContextParts>,
-    ) -> InteractionContext<'b> {
+    ) -> InteractionContext {
         let InteractionContextParts {
             interaction_id,
             member,
@@ -200,8 +218,8 @@ impl<'a> InteractionContext<'a> {
             token,
         } = parts.into();
         InteractionContext {
-            app_state,
-            ctx,
+            state,
+            context,
             interaction_id,
             member,
             guild_id,
@@ -212,13 +230,13 @@ impl<'a> InteractionContext<'a> {
     }
 }
 
-impl<'a> Interactable for InteractionContext<'a> {
-    fn http(&self) -> &serenity::http::Http {
-        &self.ctx.http
+impl Interactable for InteractionContext {
+    fn http(&self) -> Arc<serenity::http::Http> {
+        self.context.http.clone()
     }
 
-    fn state(&self) -> &DiscordAppState {
-        self.app_state
+    fn state(&self) -> SharedAppState {
+        self.state.clone()
     }
 
     fn interaction_id(&self) -> InteractionId {
@@ -227,6 +245,10 @@ impl<'a> Interactable for InteractionContext<'a> {
 
     fn guild_id(&self) -> Option<GuildId> {
         self.guild_id
+    }
+
+    fn member(&self) -> Option<&serenity::model::guild::Member> {
+        self.member.as_ref().map(|member| member.as_ref())
     }
 
     fn user(&self) -> &User {
@@ -241,38 +263,15 @@ impl<'a> Interactable for InteractionContext<'a> {
         &self.token
     }
 
-    async fn get_staff_handle(&self, user: UserId) -> crate::cache::users::User {
-        self.app_state
-            .shared_state
-            .user_cache
-            .get_or_insert(user, || {
-                crate::cache::users::User::staff(self.app_state, user)
-            })
-            .await
+    fn require_guild_id(&self) -> TicketsResult<GuildId> {
+        self.guild_id.ok_or(MiscError::GuildContextRequired.into())
     }
 
-    async fn respond(
-        &self,
-        response: CreateInteractionResponse,
-        attachments: Vec<CreateAttachment>,
-    ) -> anyhow::Result<()> {
-        Ok(self
-            .ctx
-            .http
-            .create_interaction_response(self.interaction_id, &self.token, &response, attachments)
-            .await?)
-    }
-
-    fn require_guild_id(&self) -> anyhow::Result<GuildId> {
-        self.guild_id
-            .ok_or_else(|| anyhow::anyhow!("Guild ID is required."))
-    }
-
-    fn require_member(&self) -> anyhow::Result<&serenity::model::guild::Member> {
+    fn require_member(&self) -> TicketsResult<&serenity::model::guild::Member> {
         Ok(self
             .member
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Member is required."))?
+            .ok_or(MiscError::GuildContextRequired)?
             .as_ref())
     }
 }
